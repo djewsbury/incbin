@@ -77,7 +77,12 @@
 #  define INCBIN_MACRO ".incbin"
 #endif
 
-#ifndef _MSC_VER
+/* clang and other compilers sets _MSC_VER when compiling in COFF-compatible mode (ie, these are targets with msvc in them) */
+#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__MINGW64__)
+    #define INCBIN_COFF_OUTPUT
+#endif
+
+#if !defined(_MSC_VER)
 #  define INCBIN_ALIGN \
     __attribute__((aligned(INCBIN_ALIGNMENT)))
 #else
@@ -162,9 +167,9 @@
 #  if defined(INCBIN_ARM)
 /* On arm assemblers, `@' is used as a line comment token */
 #    define INCBIN_TYPE(NAME)    ".type " INCBIN_STRINGIZE(INCBIN_PREFIX) #NAME ", %object\n"
-#  elif defined(__MINGW32__) || defined(__MINGW64__)
+#  elif defined(INCBIN_COFF_OUTPUT)
 /* Mingw doesn't support this directive either */
-#    define INCBIN_TYPE(NAME)
+#    define INCBIN_TYPE(NAME)   ".def " INCBIN_STRINGIZE(INCBIN_PREFIX) #NAME "; .scl 3; .type 0; .endef\n"
 #  else
 /* It's safe to use `@' on other architectures */
 #    define INCBIN_TYPE(NAME)    ".type " INCBIN_STRINGIZE(INCBIN_PREFIX) #NAME ", @object\n"
@@ -340,7 +345,7 @@
  * To externally reference the data included by this in another translation unit
  * please @see INCBIN_EXTERN.
  */
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && !defined(__clang__)
 #define INCBIN(NAME, FILENAME) \
     INCBIN_EXTERN(NAME)
 #else
